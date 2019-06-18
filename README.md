@@ -1,0 +1,28 @@
+# lab4
+lab 4
+
+1. Primero cree la instancia de la bdd, esto se hace con RDS. Elegí MySql como motor de bdd ya que es simple la implementación en una aplicación web. Utilice MySql Workbench para acceder a mi bdd, poder crear las tablas necesarias y cargar la información que utilizaría de prueba.
+
+Cuando realizaba pruebas de conexión ocurrió un problema y era que, al apagar la instancia de la bdd, volver a encenderla e intentar conectarme no me dejaba a pesar que usaba las mismas credenciales y el mismo endpoint. Según investigué esto se debía a que cada vez que se levanta una instancia la ip de la bdd puede cambiar, por lo que procedí a acceder a las security group rules de dicha instancia. 
+
+En la parte de inbound del security group edite la ip que tenia y agregue la 0.0.0.0/0 lo cual resolvió el problema y me permitió conectarme a pesar de que apagara y encendiera la instancia.
+
+2. Posterior, descargue un template para implementar mi CRUD en una aplicación de node.js, dicha aplicación tiene las operaciones básicas del crud (create, retrieve, update, delete). Establecí una conexión con la bdd de la forma que mis operaciones pudieran ser ejecutadas. La aplicación corría en el puerto 8000 de mi localhost.
+
+3. Al tener la aplicación terminada procedí a crear este repositorio en GitHub y subir mi aplicación.
+
+4. Al tener la aplicación web en un repositorio procedí a crear una instancia de EC2. Esta instancia tiene una imagen que ofrece el free tier de aws. A la hora de crear dicha instancia es necesario agregarle un IAM Role de administrador para poder tener permisos de administrador en la instancia. La instancia necesita storage y algunas etiquetas que pueden ser opcionales. A la instancia le había que asignar un security group. 
+
+Finalmente se genero un archivo que servía para construir una llave de acceso a la instancia. Utilice PuTTy para generar la llave de acceso y conectarme a la instancia. Esto se hacia escribiendo ec2-user@ seguido del ip publica de la instancia.
+
+Dentro de la instancia clone mi repositorio dentro de una carpeta especifica y descargue node.js para poder correr mi aplicación. Con el comando "node index.js" la aplicación arranca y muestra un pequeño mensaje del puerto en el que esta corriendo. Adicional había que indicarle a la instancia este acceso a dicho puerto, por lo que se fue a su respectivo security group y  se añadió una regla en la parte de inbound para permitir que se conecten por el puerto 8000. Al realizar esto la aplicación que desarrolle estará corriendo en la instancia ec2 de aws, por lo que si se conecta a ella por medio del puerto 8000 será posible acceder a la aplicación CRUD.
+
+5. Una vez la instancia era accesible desde una ip publica, procedí a crear un Auto Scaling group. Dicho grupo se encargaría de que al cumplir ciertas políticas establecidas la infraestructura sea capaz de escalar automáticamente. Los auto scaling groups crean instancias basándose en un AMI que son imágenes de otras instancias con configuraciones pre-cargadas. Por tal motivo, realice una AMI de la instancia que se creo en el paso 4 y configure el security group para que trabajara con esta. Después procedí a otras configuraciones y asignaciones de roles. Se le asigno la cantidad mínima y máxima de instancia que debían levantarse (2 y 5 respectivamente). Al grupo también se le asignaron políticas, un para aumento y otra para disminución, de tal forma que al detectar que supera el umbral establecido por mas de 1 minuto, eliminara o agregara una instancia. Cada vez que esto suceda se configuro el envío de notificaciones a mi correo personal, para saber como esta respondiendo la parte escalamiento en la arquitectura. A las instancias que se generaban hay que configurarles el protocolo y puerto por el que se accedera, asi como iniciar la aplicacion en cada una de las instancias.
+
+6. Posteriormente se procedió a crear un Load Balancer. Dicho recurso se encarga de gestionar las solicitudes y redireccionamientos a distintas instancias para asegurar la disponibilidad. Primero se le asignó un nombre y un puerto, despues se creo un security group que se encargará de gestionar temas de accesos exclusivamente para el load balancer. Además hay una parte que se llama configuración de Health Check, un health check son pruebas que se realizan a las instancias de EC2 para determinar si se les debe enviar requests o descartar del load balancer. En esta parte se configuran aspectos importantes como el protocolo por el que se accederá, el puerto y la ruta a la que se debe realizar ping. Tambien hay campos como el tiempo admisible para tener una respuesta, los intervalos y la cantidad de thresholds correctos e incorrectos. Al final no se le añadio ninguna instancia ya que este load balancer debía ser aplicado sobre el auto scaling group. Despues de crearlo me dirigí al auto scaling group y le añadi el load balancer. 
+
+Para corroborar que el load balancer estaba funcionando habia que esperar a que las instancias del auto scaling group pudieran pasar los health checks. Finalmente cuando estos estaban en servicio, se debia acceder a la DNS del load balancer por el puerto indicado (en mi caso el 8000) y el mismo load balancer se encargaria de dirigirnos a alguno de los servidores que estaban operando.
+
+Para probar que el load balancer esta funcionando se podia hacer que cada instancia retornara un numero diferente cuando se accediera a el por ejemplo.
+
+8. CloudFormation es un tipo de tecnologia que permite generar infraestructura en base a codigo. En mi caso se realizo un archivo JSON que definia la estructura que tendria el load balancer y las instancias, así como la configuración de las mismas. 
